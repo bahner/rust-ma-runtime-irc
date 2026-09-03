@@ -1056,18 +1056,6 @@ impl RoomActor {
             .filter(|binding| binding.validate_for_join().is_ok())
     }
 
-    /// The nick an occupant wants on this room's channel.
-    pub fn desired_channel_nick(&self, did: &str) -> String {
-        let ctx = self
-            .presence
-            .get(did)
-            .map(|presence| presence.ctx.as_str())
-            .unwrap_or_default();
-        let presence_ctx =
-            (!ctx.trim().is_empty() && !ctx.trim_start().starts_with('{')).then_some(ctx);
-        desired_irc_nick(presence_ctx, did)
-    }
-
     pub fn register_irc_mirror(&mut self, did: &str, nick: String) {
         self.irc_mirrors.insert(did.to_string(), nick);
     }
