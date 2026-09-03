@@ -1,0 +1,35 @@
+;; Local IRC vocabulary for a focused ma room.
+;; Load this source into Zion's session zscheme environment.
+
+(define (irc-room)
+  (#.my.ctx.room))
+
+(define (irc-call method . args)
+  (apply (string-append (irc-room) ":" method) args))
+
+;; `irc-server` takes an IRC server URL: `irc://host[:port]` (plaintext,
+;; default 6667) or `ircs://host[:port]` (TLS, default 6697).
+(define (irc-server . args)
+  (apply irc-call "irc-server" args))
+
+(define (irc-nick . args)
+  (apply irc-call "irc-nick" args))
+
+(define (irc-channel . args)
+  (apply irc-call "irc-channel" args))
+
+(define (irc-connect)
+  (irc-call "irc-connect"))
+
+(define (irc-disconnect)
+  (irc-call "irc-disconnect"))
+
+;; When the room is connected, `say`/`emote` route to the IRC channel.
+(define (irc-say . args)
+  (apply irc-call "say" args))
+
+(define (irc-config server nick channel)
+  (begin
+    (irc-server server)
+    (irc-nick nick)
+    (irc-channel channel)))

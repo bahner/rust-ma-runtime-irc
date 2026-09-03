@@ -1,0 +1,3 @@
+acl:
+  "*": [rpc]
+  "did:ma:blocked": null

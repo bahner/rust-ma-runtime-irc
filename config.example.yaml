@@ -1,0 +1,9 @@
+slug: irc
+status_bind: 127.0.0.1:5667
+owners:
+  - did:ma:owner
+acl_file: ./transport.acl.yaml
+kubo_rpc_url: http://127.0.0.1:5001
+# How often to republish the root manifest (rooms, exits, props).
+# The root CID is written to `root_cid` in config.yaml after each publish.
+root_publish_interval_secs: 300
