@@ -154,8 +154,6 @@ room, not a single relay persona:
   (default port 6667) and `ircs://` for TLS (default port 6697). TLS verifies
   the server certificate against the Mozilla root store, so a self-signed
   `ircs://` server will be rejected.
-- `:irc-nick foo` sets a room default nick, used when an occupant has not
-  already presented their own nick.
 - `:irc-connect` is the runtime-owner-controlled on/off switch: it activates
   the binding and joins every occupant already in the room. Entry into a
   connected room is itself the join: if the IRC server will not accept the
@@ -179,7 +177,7 @@ The repository's `irc.zscheme` provides matching local Scheme words. After
 loading it into Zion's session environment, Scheme code can use:
 
 ```scheme
-(irc-config "irc://127.0.0.1:6667" "foo" "#bar")
+(irc-config "irc://127.0.0.1:6667" "#bar")
 (irc-connect)
 (irc-say "hello")
 (irc-disconnect)

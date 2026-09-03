@@ -67,7 +67,7 @@ impl RoomSpec {
                 "description" | "desc" => description = v.replace('_', " "),
                 "server" | "nick" | "join" | "connect" | "disconnect" | "net" | "pass" => {
                     return Err(anyhow!(
-                        "dig does not configure IRC; use :irc-server, :irc-nick, :irc-channel, and :irc-connect inside the room"
+                        "dig does not configure IRC; use :irc-server, :irc-channel, and :irc-connect inside the room"
                     ))
                 }
                 other => {
@@ -192,7 +192,6 @@ pub struct RoomExit {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IrcBinding {
     pub server: String,
-    pub nick: String,
     pub channel: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub net: Option<String>,
@@ -251,10 +250,10 @@ fn did_fallback_nick(did: &str) -> String {
     nick
 }
 
-/// The nick an occupant wants on the room's channel. The room nick the actor
-/// already presents wins; otherwise the room's configured default nick;
-/// otherwise a DID-derived nick. All choices are IRC-sanitised.
-pub fn desired_irc_nick(binding_nick: &str, presence_ctx: Option<&str>, did: &str) -> String {
+/// The nick an occupant wants on the room's channel. The nick the actor
+/// already presents wins; otherwise a DID-derived nick. All choices are
+/// IRC-sanitised.
+pub fn desired_irc_nick(presence_ctx: Option<&str>, did: &str) -> String {
     if let Some(ctx) = presence_ctx {
         let ctx = ctx.trim();
         if !ctx.is_empty() && !ctx.starts_with('{') {
@@ -263,10 +262,6 @@ pub fn desired_irc_nick(binding_nick: &str, presence_ctx: Option<&str>, did: &st
                 return nick;
             }
         }
-    }
-    let binding_nick = binding_nick.trim();
-    if !binding_nick.is_empty() {
-        return sanitise_irc_nick(binding_nick);
     }
     sanitise_irc_nick(&did_fallback_nick(did))
 }
@@ -341,13 +336,17 @@ pub struct IrcClient {
 }
 
 impl IrcClient {
-    /// Register on the server with `binding.nick` (retrying suffixed
-    /// candidates on nick-in-use), join `binding.channel`, then stream every
-    /// observed channel event into `events`. The accepted nick is reported as
-    /// the first event (`Ready`).
-    pub async fn connect(binding: &IrcBinding, events: mpsc::Sender<IrcEvent>) -> Result<Self> {
+    /// Register on the server with `nick` (retrying suffixed candidates on
+    /// nick-in-use), join `binding.channel`, then stream every observed
+    /// channel event into `events`. The accepted nick is reported as the
+    /// first event (`Ready`).
+    pub async fn connect(
+        binding: &IrcBinding,
+        nick: &str,
+        events: mpsc::Sender<IrcEvent>,
+    ) -> Result<Self> {
         binding.validate_for_join()?;
-        let desired = binding.nick.trim();
+        let desired = nick.trim();
         if desired.is_empty() {
             return Err(anyhow!("an IRC nick is required to join the channel"));
         }
@@ -1066,12 +1065,7 @@ impl RoomActor {
             .unwrap_or_default();
         let presence_ctx =
             (!ctx.trim().is_empty() && !ctx.trim_start().starts_with('{')).then_some(ctx);
-        let binding_nick = self
-            .irc
-            .as_ref()
-            .map(|binding| binding.nick.as_str())
-            .unwrap_or_default();
-        desired_irc_nick(binding_nick, presence_ctx, did)
+        desired_irc_nick(presence_ctx, did)
     }
 
     pub fn register_irc_mirror(&mut self, did: &str, nick: String) {
@@ -1206,17 +1200,13 @@ mod tests {
     }
 
     #[test]
-    fn desired_nick_prefers_presence_then_binding_then_did() {
-        assert_eq!(
-            desired_irc_nick("roomnick", Some("fjodor"), "did:ma:abc"),
-            "fjodor"
-        );
-        assert_eq!(desired_irc_nick("roomnick", None, "did:ma:abc"), "roomnick");
-        let did_nick = desired_irc_nick("", None, "did:ma:abc123");
+    fn desired_nick_prefers_presence_then_did() {
+        assert_eq!(desired_irc_nick(Some("fjodor"), "did:ma:abc"), "fjodor");
+        let did_nick = desired_irc_nick(None, "did:ma:abc123");
         assert!(did_nick.starts_with("ma-abc123"), "got {did_nick}");
         // A JSON-ish presence ctx counts as no nick.
         assert_eq!(
-            desired_irc_nick("", Some("{\"kind\":\"h00man\"}"), "did:ma:abc123"),
+            desired_irc_nick(Some("{\"kind\":\"h00man\"}"), "did:ma:abc123"),
             did_nick
         );
     }
@@ -1381,13 +1371,12 @@ mod tests {
 
         let binding = IrcBinding {
             server: format!("irc://{address}"),
-            nick: "ma-test".to_string(),
             channel: "#ma-test".to_string(),
             net: None,
             pass: None,
         };
         let (events, mut event_rx) = mpsc::channel::<IrcEvent>(16);
-        let client = IrcClient::connect(&binding, events)
+        let client = IrcClient::connect(&binding, "ma-test", events)
             .await
             .expect("connect IRC client");
 

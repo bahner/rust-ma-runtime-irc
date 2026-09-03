@@ -136,9 +136,7 @@ impl RoomBridge {
         }
         let simple_ctx =
             (!ctx.trim().is_empty() && !ctx.trim_start().starts_with('{')).then_some(ctx.trim());
-        let desired = desired_irc_nick(&self.binding.nick, simple_ctx, did);
-        let mut binding = self.binding.clone();
-        binding.nick = desired.clone();
+        let desired = desired_irc_nick(simple_ctx, did);
 
         let (event_tx, mut event_rx) = mpsc::channel::<IrcEvent>(64);
         let input = self.input.clone();
@@ -158,7 +156,7 @@ impl RoomBridge {
             }
         });
 
-        match IrcClient::connect(&binding, event_tx).await {
+        match IrcClient::connect(&self.binding, &desired, event_tx).await {
             Ok(client) => {
                 info!(room = %self.room_fragment, did, nick = %desired, "occupant joined the IRC channel");
                 self.sessions.insert(did.to_string(), client);
@@ -182,7 +180,7 @@ impl RoomBridge {
         let Some(simple_ctx) = simple_ctx else {
             return Ok(());
         };
-        let desired = desired_irc_nick(&self.binding.nick, Some(simple_ctx), did);
+        let desired = desired_irc_nick(Some(simple_ctx), did);
 
         let current = {
             let mut guard = self.root.lock().await;

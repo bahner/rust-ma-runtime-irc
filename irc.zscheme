@@ -12,9 +12,6 @@
 (define (irc-server . args)
   (apply irc-call "irc-server" args))
 
-(define (irc-nick . args)
-  (apply irc-call "irc-nick" args))
-
 (define (irc-channel . args)
   (apply irc-call "irc-channel" args))
 
@@ -28,8 +25,7 @@
 (define (irc-say . args)
   (apply irc-call "say" args))
 
-(define (irc-config server nick channel)
+(define (irc-config server channel)
   (begin
     (irc-server server)
-    (irc-nick nick)
     (irc-channel channel)))

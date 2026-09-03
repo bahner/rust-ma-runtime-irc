@@ -371,7 +371,7 @@ impl RootActor {
         };
 
         format!(
-            "Welcome to #concourse\nUse dig <name> to enter an existing room or create and enter a new one.\nLink an existing room in another runtime: dig <name> to <did:ma:...#fragment>\nSet room description: describe <room> <text_with_underscores>\nAdd exit: exit-add <room> <name> <did:ma:...#fragment>\nRemove exit: exit-del <room> <name>\nDelete room: delete <name>\nShow room ctx: ctx <room>\nList rooms with: exits\nInside a room: :prop <key> [value], :owner <did>, :unlock [secret], dig <name>, and IRC config with :irc-server, :irc-nick, :irc-channel, then :irc-connect (owners only).\nKnown rooms: {exits_text}"
+            "Welcome to #concourse\nUse dig <name> to enter an existing room or create and enter a new one.\nLink an existing room in another runtime: dig <name> to <did:ma:...#fragment>\nSet room description: describe <room> <text_with_underscores>\nAdd exit: exit-add <room> <name> <did:ma:...#fragment>\nRemove exit: exit-del <room> <name>\nDelete room: delete <name>\nShow room ctx: ctx <room>\nList rooms with: exits\nInside a room: :prop <key> [value], :owner <did>, :unlock [secret], dig <name>, and IRC config with :irc-server, :irc-channel, then :irc-connect (owners only).\nKnown rooms: {exits_text}"
         )
     }
 
@@ -600,20 +600,6 @@ impl RootActor {
                 room.irc_config_mut().server = value.clone();
                 Ok(format!("IRC server set to {value}"))
             }
-            "irc-nick" => {
-                let value = parts.collect::<Vec<_>>().join(" ");
-                if value.is_empty() {
-                    return Ok(room
-                        .irc
-                        .as_ref()
-                        .map(|irc| irc.nick.as_str())
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or("(IRC nick not set)")
-                        .to_string());
-                }
-                room.irc_config_mut().nick = value.clone();
-                Ok(format!("IRC nick set to {value}"))
-            }
             "irc-channel" => {
                 let value = parts.collect::<Vec<_>>().join(" ");
                 if value.is_empty() {
@@ -653,7 +639,7 @@ impl RootActor {
                 Ok(format!("left {}", room.name()))
             }
             other => Err(anyhow!(
-                "unknown room command '{other}' (try: look, exits, say, emote, prop, owner, unlock, irc-server, irc-nick, irc-channel, irc-connect, irc-disconnect, leave)"
+                "unknown room command '{other}' (try: look, exits, say, emote, prop, owner, unlock, irc-server, irc-channel, irc-connect, irc-disconnect, leave)"
             )),
         }
     }

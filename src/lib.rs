@@ -116,7 +116,6 @@ acl_file: transport.acl.yaml
             let irc = hub.irc_config_mut();
             irc.server = "irc://127.0.0.1:6667".to_string();
             irc.channel = "#bar".to_string();
-            irc.nick = "foo".to_string();
         }
 
         let manifest = root.to_manifest();
@@ -135,7 +134,6 @@ acl_file: transport.acl.yaml
             let irc = hub.irc.as_ref().expect("irc binding restored");
             assert_eq!(irc.server, "irc://127.0.0.1:6667");
             assert_eq!(irc.channel, "#bar");
-            assert_eq!(irc.nick, "foo");
             hub.fragment.clone()
         };
 
@@ -357,8 +355,6 @@ acl_file: transport.acl.yaml
             .is_err());
         root.room_command(owner, "lounge", ":irc-server irc://127.0.0.1:6667")
             .expect("set server");
-        root.room_command(owner, "lounge", ":irc-nick ma-test")
-            .expect("set nick");
         root.room_command(owner, "lounge", ":irc-channel #ma-test")
             .expect("set channel");
 
@@ -523,8 +519,6 @@ acl_file: transport.acl.yaml
 
         root.room_command("did:ma:owner", "alpha", ":irc-server irc://127.0.0.1")
             .expect("set IRC server");
-        root.room_command("did:ma:owner", "alpha", ":irc-nick foo")
-            .expect("set IRC nick");
         root.room_command("did:ma:owner", "alpha", ":irc-channel #chan")
             .expect("set IRC channel");
 
