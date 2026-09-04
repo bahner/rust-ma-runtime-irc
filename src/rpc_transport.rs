@@ -7,8 +7,7 @@ use ciborium::Value as CborValue;
 use ma_core::config::SecretBundle;
 use ma_core::{
     decode_content, new_ma_endpoint, Did, DidDocumentResolver, Inbox, MaEndpoint, Message,
-    SigningKey, CONTENT_TYPE_TERM, INBOX_PROTOCOL_ID, IPFS_PROTOCOL_ID, MESSAGE_TYPE_RPC,
-    MESSAGE_TYPE_RPC_REPLY, RPC_PROTOCOL_ID,
+    SigningKey, CONTENT_TYPE_TERM, INBOX_PROTOCOL_ID, IPFS_PROTOCOL_ID, MESSAGE_TYPE_MESSAGE,
 };
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, info, warn};
@@ -23,7 +22,6 @@ use crate::root::{
 pub struct RpcRuntime {
     pub endpoint: Arc<dyn MaEndpoint>,
     pub rpc_inbox: Inbox<Message>,
-    pub inbox_inbox: Inbox<Message>,
     pub ipfs_inbox: Inbox<Message>,
     pub resolver: Arc<dyn DidDocumentResolver>,
     pub signing_key: SigningKey,
@@ -35,7 +33,6 @@ impl RpcRuntime {
     pub fn services(&self) -> Vec<String> {
         let endpoint_id = self.endpoint.id();
         vec![
-            format!("/iroh/{endpoint_id}{RPC_PROTOCOL_ID}"),
             format!("/iroh/{endpoint_id}{INBOX_PROTOCOL_ID}"),
             format!("/iroh/{endpoint_id}{IPFS_PROTOCOL_ID}"),
         ]
@@ -59,15 +56,13 @@ pub async fn init_rpc_runtime(
     )
     .await
     .context("starting iroh endpoint")?;
-    let rpc_inbox = endpoint.service(RPC_PROTOCOL_ID);
-    let inbox_inbox = endpoint.service(INBOX_PROTOCOL_ID);
+    let rpc_inbox = endpoint.service(INBOX_PROTOCOL_ID);
     let ipfs_inbox = endpoint.service(IPFS_PROTOCOL_ID);
     let endpoint: Arc<dyn MaEndpoint> = Arc::from(endpoint);
 
     Ok(RpcRuntime {
         endpoint,
         rpc_inbox,
-        inbox_inbox,
         ipfs_inbox,
         resolver,
         signing_key,
@@ -83,20 +78,19 @@ pub async fn run_rpc_loop(
     info!(did = %runtime.runtime_did, "rpc loop started");
     loop {
         let now = now_secs();
-        // Keep non-RPC queues drained so services stay healthy even before full handlers exist.
-        runtime.inbox_inbox.drain(now);
+        // Keep the IPFS service drained so it stays healthy even before a full handler exists.
         runtime.ipfs_inbox.drain(now);
         for message in runtime.rpc_inbox.drain(now) {
-            if message.message_type != MESSAGE_TYPE_RPC {
+            if message.message_type != MESSAGE_TYPE_MESSAGE {
                 debug!(
                     message_type = %message.message_type,
                     from = %message.from,
                     id = %message.id,
-                    "ignoring non-RPC message in rpc inbox"
+                    "ignoring non-message traffic in inbox"
                 );
                 continue;
             }
-            debug!(from = %message.from, to = %message.to, id = %message.id, "dispatching RPC message");
+            debug!(from = %message.from, to = %message.to, id = %message.id, "dispatching actor message");
             if let Err(error) = handle_rpc_message(&runtime, &root, &message).await {
                 warn!(error = %error, from = %message.from, id = %message.id, "rpc handler error");
             }
@@ -840,7 +834,7 @@ async fn send_reply(
     let reply = Message::new_reply(
         from_actor,
         to_actor,
-        MESSAGE_TYPE_RPC_REPLY,
+        MESSAGE_TYPE_MESSAGE,
         CONTENT_TYPE_TERM,
         payload,
         reply_to_id,
@@ -852,14 +846,14 @@ async fn send_reply(
         from = from_actor,
         to = to_actor,
         reply_to = reply_to_id,
-        message_type = MESSAGE_TYPE_RPC_REPLY,
-        "sending RPC reply"
+        message_type = MESSAGE_TYPE_MESSAGE,
+        "sending reply"
     );
     let mut outbox = runtime
         .endpoint
-        .outbox(runtime.resolver.as_ref(), to_actor, RPC_PROTOCOL_ID)
+        .outbox(runtime.resolver.as_ref(), to_actor, INBOX_PROTOCOL_ID)
         .await
-        .context("opening RPC reply outbox")?;
+        .context("opening reply outbox")?;
     outbox.send(&reply).await.context("sending RPC reply")
 }
 
@@ -987,7 +981,7 @@ pub(crate) async fn send_unsolicited_term(
     let message = Message::new(
         from_actor,
         to_actor,
-        MESSAGE_TYPE_RPC,
+        MESSAGE_TYPE_MESSAGE,
         CONTENT_TYPE_TERM,
         &payload,
         &runtime.signing_key,
@@ -995,7 +989,7 @@ pub(crate) async fn send_unsolicited_term(
     .context("building unsolicited RPC message")?;
     let mut outbox = runtime
         .endpoint
-        .outbox(runtime.resolver.as_ref(), to_actor, RPC_PROTOCOL_ID)
+        .outbox(runtime.resolver.as_ref(), to_actor, INBOX_PROTOCOL_ID)
         .await
         .context("opening event outbox")?;
     outbox
