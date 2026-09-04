@@ -9,7 +9,7 @@ description = "IRC-focused ma runtime prototype with native root and channel act
 anyhow = "1"
 ciborium = "0.2"
 clap = { version = "4", features = ["derive"] }
-ma-core = { version = "^0.14.4", default-features = false, features = ["acl", "config", "kubo", "iroh"] }
+ma-core = { version = "^0.15", default-features = false, features = ["acl", "config", "kubo", "iroh"] }
 nanoid = "0.5"
 reqwest = { version = "0.13", default-features = false, features = ["json", "multipart", "query"] }
 rustls = "0.23"
